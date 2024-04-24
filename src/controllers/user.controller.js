@@ -36,7 +36,7 @@ const registerUser = asyncHandler(async (req, res) => {
   //retunr resm
 
   const { fullName, email, username, password } = req.body;
-  // console.log("email:", email);
+
   if (
     [fullName, email, username, password].some((field) => field?.trim() === "")
   ) {
@@ -50,12 +50,9 @@ const registerUser = asyncHandler(async (req, res) => {
   if (existedUser) {
     throw new ApiError(409, "User with username or email already exist");
   }
-  // console.log(req.files?.avatar[0]?.path);
 
-  // console.log(req.files);
   const avatarLocalPath = req.files?.avatar[0]?.path;
 
-  // console.log(req.files?.coverImage[0]?.path);
   // const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
   let coverImageLocalPath;
@@ -183,7 +180,7 @@ const logoutUser = asyncHandler(async (req, res) => {
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
-  // console.log(incomingRefreshToken);
+
   if (!incomingRefreshToken) {
     throw new ApiError(401, "unauthorized request");
   }
@@ -286,7 +283,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   const avatar = await uploadOnCloudinary(avatarLocalPath);
 
   if (!avatar.url) {
-    throw new ApiError(400, "Error while uploading on avatar");
+    throw new ApiError(400, "Error while uploading avatar");
   }
   const user = await User.findByIdAndUpdate(
     req.user?._id,
