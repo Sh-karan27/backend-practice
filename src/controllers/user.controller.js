@@ -158,8 +158,8 @@ const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: {
-        refreshToken: undefined,
+      $unset: {
+        refreshToken: 1, //this removes the field from document
       },
     },
     {
@@ -248,7 +248,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "Password chnaged successfully"));
 });
 
-const getCurrentUser = asyncHandler(async (res, req) => {
+const getCurrentUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, req.user, "current user fetched successfully"));
@@ -358,10 +358,10 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     {
       $addFields: {
         subscribersCount: {
-          $size: "subscribers",
+          $size: "$subscribers",
         },
         channelsSubscribedToCount: {
-          $size: "subscribedTo",
+          $size: "$subscribedTo",
         },
         isSubscribed: {
           $cond: {
