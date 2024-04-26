@@ -3,7 +3,7 @@ import {
   getAllVideos,
   publishAVideo,
   getVideoById,
-  updateVideo,
+  updateVideoDetails,
   deleteVideo,
   togglePublishStatus,
 } from "../controllers/video.controller.js";
@@ -28,5 +28,9 @@ router.route("/publishVideo").post(
   ]),
   publishAVideo
 );
+
+router
+  .route("/v/:videoId")
+  .patch(verifyJWT, upload.single("thumbnail"), updateVideoDetails);
 
 export default router;
