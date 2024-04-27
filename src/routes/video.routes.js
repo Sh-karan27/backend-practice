@@ -31,6 +31,7 @@ router.route("/publishVideo").post(
 
 router
   .route("/v/:videoId")
-  .patch(verifyJWT, upload.single("thumbnail"), updateVideoDetails);
+  .patch(verifyJWT, upload.single("thumbnail"), updateVideoDetails)
+  .delete(verifyJWT, deleteVideo);
 
 export default router;

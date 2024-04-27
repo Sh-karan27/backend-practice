@@ -4,7 +4,7 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
@@ -96,7 +96,6 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
 
   const { title, description } = req.body;
   const { videoId } = req.params;
-  //TODO: delete video
 
   if (!isValidObjectId(videoId)) {
     throw new ApiError(400, "Invalid videoId");
@@ -163,7 +162,40 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
     );
 });
 
-const deleteVideo = asyncHandler(async (req, res) => {});
+const deleteVideo = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  //TODO: delete video
+
+  if (!isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid videoId");
+  }
+
+  const video = await Video.findById(videoId);
+
+  if (!video) {
+    throw new ApiError(404, "No video found");
+  }
+
+  if (video.owner.toString() !== req.user?.id.toString()) {
+    throw new ApiError(
+      404,
+      "you cant edit this video since you are  not the owner"
+    );
+  }
+
+  const videoDelted = await Video.findByIdAndDelete(video?._id);
+
+  if (!videoDelted) {
+    throw new ApiError(400, "Failed to delete the video please try again");
+  }
+
+  await deleteOnCloudinary(video.thumbnail.public_id);
+  await deleteOnCloudinary(video.videoFile.public_id, "video");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Video deleted successfully"));
+});
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
