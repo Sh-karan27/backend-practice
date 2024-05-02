@@ -8,7 +8,84 @@ import { deleteOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
-  //TODO: get all videos based on query, sort, pagination
+  // for using Full Text based search u need to create a search index in mongoDB atlas
+  // you can include field mapppings in search index eg.title, description, as well
+  // Field mappings specify which fields within your documents should be indexed for text search.
+  // this helps in seraching only in title, desc providing faster search results
+  // here the name of search index is 'search-videos'
+  const pipeline = [];
+
+  if (query) {
+    pipeline.push({
+      $search: {
+        index: "search-videos",
+        text: {
+          query: query,
+          path: ["title", "description"], //search only on title, description
+        },
+      },
+    });
+  }
+
+  if (userId) {
+    if (!isValidObjectId(userId)) {
+      throw new ApiError(404, "enter a valid user id ");
+    }
+    pipeline.push({
+      $match: {
+        owner: new mongoose.Types.ObjectId(userId),
+      },
+    });
+  }
+
+  pipeline.push({
+    $match: { isPublished: true },
+  });
+
+  if (sortBy && sortType) {
+    pipeline.push({
+      $sort: {
+        [sortBy]: sortType === "asc" ? 1 : -1,
+      },
+    });
+  } else {
+    pipeline.push({ $sort: { createdAt: -1 } });
+  }
+
+  pipeline.push(
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "ownerDetails",
+        pipeline: [
+          {
+            $project: {
+              username: 1,
+              "avatar.url": 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: "$ownerDetails",
+    }
+  );
+
+  const videoAggregate = await Video.aggregate(pipeline);
+
+  const options = {
+    page: parseInt(page, 10),
+    limit: parseInt(limit, 10),
+  };
+
+  const video = await Video.aggregatePaginate(videoAggregate, options);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Videos fetched successfully"));
 });
 
 const publishAVideo = asyncHandler(async (req, res) => {
@@ -86,7 +163,6 @@ const publishAVideo = asyncHandler(async (req, res) => {
 
 const getVideoById = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
-  const isIdValid = await Video.findById();
 });
 
 const updateVideoDetails = asyncHandler(async (req, res) => {
@@ -199,6 +275,28 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+
+  if (!isValidObjectId(videoId)) {
+    throw new ApiError(404, "Invalid video ID");
+  }
+
+  const video = await Video.findByIdAndUpdate(
+    videoId,
+    {
+      $set: {
+        isPublished: true,
+      },
+    },
+    { new: true }
+  );
+
+  if (!video) {
+    throw new ApiError(400, "Failed to publish video please try again");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video published successfully"));
 });
 
 export {
