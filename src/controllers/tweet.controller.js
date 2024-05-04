@@ -61,7 +61,7 @@ const getUserTweets = asyncHandler(async (req, res) => {
       $lookup: {
         from: "likes",
         localField: "_id",
-        foreignField: "tweets",
+        foreignField: "tweet",
         as: "likeDetails",
         pipeline: [
           {
@@ -81,6 +81,13 @@ const getUserTweets = asyncHandler(async (req, res) => {
         userDetails: {
           $first: "$userDetails",
         },
+        isLiked: {
+          $cond: {
+            if: { $in: [req.user?._id, "$likeDetails.likedBy"] },
+            then: true,
+            else: false,
+          },
+        },
       },
     },
   ]);
@@ -96,10 +103,86 @@ const getUserTweets = asyncHandler(async (req, res) => {
 
 const updateTweet = asyncHandler(async (req, res) => {
   //TODO: update tweet
+  //get that tweet id and a content that should be updated
+  //check if tweet id is correct or not or empty or now
+  //check if content is same or not
+  //find by id and upate the content
+  //res
+
+  const { tweetId } = req.params;
+  const { content } = req.body;
+
+  if (!isValidObjectId(tweetId)) {
+    throw new ApiError(404, "Please enter valid tweetId");
+  }
+
+  if (!content) {
+    throw new ApiError(404, "Please enter content");
+  }
+
+  const tweet = await Tweet.findById(tweetId);
+
+  if (!tweet) {
+    throw new ApiError(404, "could not find the tweet");
+  }
+
+  if (tweet.owner.toString() !== req.user?._id.toString()) {
+    throw new ApiError(
+      404,
+      "you are not the  owner of this tweet you cant edit it "
+    );
+  }
+
+  const updatedTweet = await Tweet.findByIdAndUpdate(
+    tweetId,
+    {
+      $set: {
+        content,
+      },
+    },
+    { new: true }
+  );
+
+  if (!updatedTweet) {
+    throw new ApiError(404, "failed to update tweet try again");
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedTweet, "tweet updated successfully"));
 });
 
 const deleteTweet = asyncHandler(async (req, res) => {
   //TODO: delete tweet
+  //get the id of the tweet you wanna delete
+  //check the id
+  //match the owner and user id
+  //findByIdandDelete
+  //res
+
+  const { tweetId } = req.params;
+
+  if (!isValidObjectId(tweetId)) {
+    throw new ApiError(404, "Enter valid tweetId");
+  }
+
+  const tweet = await Tweet.findById(tweetId);
+
+  if (!tweet) {
+    throw new ApiError(404, "Could not find tweet or tweet doesnt exist");
+  }
+
+  if (tweet?.owner.toString() !== req.user?._id.toString()) {
+    throw new ApiError(
+      404,
+      "You can delete this tweet bcoz you are not  the owner"
+    );
+  }
+
+  const deleteTweet = await Tweet.findByIdAndDelete(tweetId);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, deleteTweet, "tweet was deleted successfully"));
 });
 
 export { createTweet, getUserTweets, updateTweet, deleteTweet };
