@@ -33,6 +33,7 @@ router.route("/publishVideo").post(
 
 router
   .route("/v/:videoId")
+  .get(verifyJWT, getVideoById)
   .patch(verifyJWT, upload.single("thumbnail"), updateVideoDetails)
   .delete(verifyJWT, deleteVideo);
 

@@ -20,7 +20,7 @@ const createTweet = asyncHandler(async (req, res) => {
   });
 
   if (!tweet) {
-    throw new ApiError(404, "Failed to upload tweet, please try again");
+    throw new ApiError(500, "Failed to upload tweet, please try again");
   }
 
   return res
@@ -93,7 +93,7 @@ const getUserTweets = asyncHandler(async (req, res) => {
   ]);
 
   if (!userTweets) {
-    throw new ApiError(404, "something went wrong while fetching twweets");
+    throw new ApiError(500, "something went wrong while fetching twweets");
   }
 
   return res
@@ -144,7 +144,7 @@ const updateTweet = asyncHandler(async (req, res) => {
   );
 
   if (!updatedTweet) {
-    throw new ApiError(404, "failed to update tweet try again");
+    throw new ApiError(500, "failed to update tweet try again");
   }
   return res
     .status(200)
@@ -179,6 +179,9 @@ const deleteTweet = asyncHandler(async (req, res) => {
   }
 
   const deleteTweet = await Tweet.findByIdAndDelete(tweetId);
+  if (!deleteTweet) {
+    throw new ApiError(500, "Failted to delete tweet please try again");
+  }
 
   return res
     .status(200)
