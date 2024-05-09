@@ -13,39 +13,50 @@ const getAllVideos = asyncHandler(async (req, res) => {
   // Field mappings specify which fields within your documents should be indexed for text search.
   // this helps in seraching only in title, desc providing faster search results
   // here the name of search index is 'search-videos'
-  const pipeline = [];
+  // console.log(req.query);
 
-  if (query) {
-    pipeline.push({
-      $search: {
-        index: "search-videos",
-        text: {
-          query: query,
-          path: ["title", "description"], //search only on title, description
-        },
-      },
-    });
-  }
+  const pipeline = [];
+  console.log(pipeline);
+
+  // if (query) {
+  //   pipeline.push({
+  //     $search: {
+  //       index: "search-videos",
+  //       text: {
+  //         query: query,
+  //         path: ["title", "description"],
+  //       },
+  //     },
+  //   });
+  // } else {
+  //   throw new ApiError(404, "please enter a query");
+  // }
+  // console.log(query);
 
   if (userId) {
     if (!isValidObjectId(userId)) {
-      throw new ApiError(404, "enter a valid user id ");
+      throw new ApiError(404, "In valid user ID");
     }
+
     pipeline.push({
       $match: {
         owner: new mongoose.Types.ObjectId(userId),
       },
     });
   }
+  console.log(userId);
 
   pipeline.push({
-    $match: { isPublished: true },
+    $match: {
+      isPublished: true,
+    },
   });
 
   if (sortBy && sortType) {
     pipeline.push({
       $sort: {
-        [sortBy]: sortType === "asc" ? 1 : -1,
+        // [sortBy]: sortType === "asc" ? 1 : -1,
+        views: -1,
       },
     });
   } else {
@@ -63,7 +74,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
           {
             $project: {
               username: 1,
-              "avatar.url": 1,
+              avatar: 1,
             },
           },
         ],
@@ -73,19 +84,30 @@ const getAllVideos = asyncHandler(async (req, res) => {
       $unwind: "$ownerDetails",
     }
   );
+  // console.log(pipeline);
 
   const videoAggregate = await Video.aggregate(pipeline);
+  console.log(videoAggregate);
 
+  if (!videoAggregate) {
+    throw new ApiError(500, "failed to aggregate Video, try again ");
+  }
+  // console.log(videoAggregate);
   const options = {
     page: parseInt(page, 10),
     limit: parseInt(limit, 10),
   };
 
   const video = await Video.aggregatePaginate(videoAggregate, options);
+  // console.log(video);
+
+  if (!video) {
+    throw new ApiError(500, "failed to get video");
+  }
 
   return res
     .status(200)
-    .json(new ApiResponse(200, video, "Videos fetched successfully"));
+    .json(new ApiResponse(200, video, "video fetched successfully"));
 });
 
 const publishAVideo = asyncHandler(async (req, res) => {
