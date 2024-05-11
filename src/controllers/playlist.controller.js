@@ -169,11 +169,12 @@ const getPlaylistById = asyncHandler(async (req, res) => {
 });
 
 const addVideoToPlaylist = asyncHandler(async (req, res) => {
-  const { playlistId, videoId } = req.params;
+  let { playlistId, videoId } = req.params;
+
   console.log(playlistId);
   console.log(videoId);
 
-  if (!isValidObjectId(playlistId) || isValidObjectId(videoId)) {
+  if (!isValidObjectId(playlistId) || !isValidObjectId(videoId)) {
     throw new ApiError(400, "Invalid PlaylistId or videoId");
   }
 
@@ -188,28 +189,23 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Video not found");
   }
 
-  if (playlist?.owner.toString() !== req.user?._id.toString()) {
+  if (playlist.owner?.toString() !== req.user?._id.toString()) {
     throw new ApiError(
       404,
       "you are not the owner of this playlis you cant add any video"
     );
   }
 
-  const updatedPlaylist = await Playlist.aggregate([
-    {
-      $match: {
-        _id: playlistId,
-      },
-    },
+  const updatedPlaylist = await Playlist.findByIdAndUpdate(
+    playlist?._id,
     {
       $addToSet: {
         videos: videoId,
       },
     },
-    {
-      new: true,
-    },
-  ]);
+    { new: true }
+  );
+
   if (!updatedPlaylist) {
     throw new ApiError(400, "failed to add video to playlist please try again");
   }
