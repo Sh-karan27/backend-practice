@@ -112,7 +112,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
     {
       $lookup: {
         from: "video",
-        localField: "videso",
+        localField: "videos",
         foreignField: "_id",
         as: "videos",
       },
@@ -138,7 +138,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
         updatedAt: 1,
         totalVideos: 1,
         totalViews: 1,
-        video: {
+        videos: {
           _id: 1,
           "videoFile.url": 1,
           "thumbnail.url": 1,
@@ -224,17 +224,117 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
 const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
   const { playlistId, videoId } = req.params;
   // TODO: remove video from playlist
+
+  if (!isValidObjectId(playlistId) || !isValidObjectId(videoId)) {
+    throw new ApiError(404, "invalid playlistId or videoId");
+  }
+  const playlist = await Playlist.findById(playlistId);
+  const video = await Video.findById(videoId);
+
+  if (!playlist) {
+    throw new ApiError(404, "playlist not found");
+  }
+
+  if (!video) {
+    throw new ApiError(404, "video not found");
+  }
+
+  if (playlist?.owner.toString() !== req.user?._id.toString()) {
+    throw new ApiError(404, "you are not owner of playlist you cant delete");
+  }
+
+  const updatedPlaylist = await Playlist.findByIdAndUpdate(
+    playlistId,
+    {
+      $pull: { videos: videoId },
+    },
+
+    { new: true }
+  );
+
+  if (!updatePlaylist) {
+    throw new ApiError(500, "couldn't update playlist, try again");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        updatedPlaylist,
+        "video deleted from playlist successfully"
+      )
+    );
 });
 
 const deletePlaylist = asyncHandler(async (req, res) => {
   const { playlistId } = req.params;
   // TODO: delete playlist
+
+  if (!isValidObjectId(playlistId)) {
+    throw new ApiError(404, "Enter valid playlistId");
+  }
+
+  const playlist = await Playlist.findById(playlistId);
+
+  if (!playlist) {
+    throw new ApiError(404, "playlist doesnt exist");
+  }
+  if (playlist?.owner.toString() !== req.user?._id.toString()) {
+    throw new ApiError(
+      404,
+      " arent not the owner You cant delete this playlist"
+    );
+  }
+
+  const deletePlaylist = await Playlist.findByIdAndDelete(playlistId);
+  if (!deletePlaylist) {
+    throw new ApiError(500, " Failed to delete playlist,try again");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, deletePlaylist, "Playlist deleted successfully")
+    );
 });
 
 const updatePlaylist = asyncHandler(async (req, res) => {
   const { playlistId } = req.params;
   const { name, description } = req.body;
   //TODO: update playlist
+  if (!isValidObjectId(playlistId)) {
+    throw new ApiError(404, "Enter valid playlistId");
+  }
+
+  if (!name || !description) {
+    throw new ApiError(404, "name and description is required");
+  }
+
+  const playlist = await Playlist.findById(playlistId);
+
+  if (playlist?.owner.toString() !== req.user?._id.toString()) {
+    throw new ApiError(404, "You cant updated coz you are not the owner");
+  }
+
+  const updatePlaylist = await Playlist.findByIdAndUpdate(
+    playlistId,
+    {
+      $set: {
+        name,
+        description,
+      },
+    },
+    { new: true }
+  );
+
+  if (!updatePlaylist) {
+    throw new ApiError(500, "Failed to update playlist");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatePlaylist, "playlist updated"));
 });
 
 export {

@@ -280,6 +280,7 @@ const getVideoById = asyncHandler(async (req, res) => {
         owner: 1,
         likesCount: 1,
         isLiked: 1,
+        isPublished: 1,
       },
     },
   ]);
