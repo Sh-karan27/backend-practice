@@ -40,6 +40,31 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
 const toggleCommentLike = asyncHandler(async (req, res) => {
   const { commentId } = req.params;
   //TODO: toggle like on comment
+
+  if (!isValidObjectId(commentId)) {
+    throw new ApiError(404, "Enter valid commentId");
+  }
+  const alreadyLiked = await Like.findOne({
+    comment: commentId,
+    likedBy: req.user?._id,
+  });
+
+  if (alreadyLiked) {
+    await Like.findByIdAndDelete(alreadyLiked?._id);
+    return res
+      .status(200)
+      .json(new ApiResponse(200, { isLiked: false }, "comment unliked"));
+  }
+  const likedComment = await Like.create({
+    comment: commentId,
+    likedBy: req.user?._id,
+  });
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, { likedComment, isLiked: true }, "Comment liked")
+    );
 });
 
 const toggleTweetLike = asyncHandler(async (req, res) => {
