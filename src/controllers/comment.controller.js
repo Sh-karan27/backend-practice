@@ -14,7 +14,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
   // if (!isValidObjectId(videoId)) {
   //   throw new ApiError(404, "Enter valid videoId");
   // }
-  console.log(videoId);
+  // console.log(videoId);
 
   const video = await Video.findById(videoId);
 
@@ -63,6 +63,11 @@ const getVideoComments = asyncHandler(async (req, res) => {
       },
     },
     {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+    {
       $project: {
         content: 1,
         createdAt: 1,
@@ -78,6 +83,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
   ]);
 
   console.log(aggregateComments);
+
   const options = {
     page: parseInt(page, 10),
     limit: parseInt(limit, 10),
