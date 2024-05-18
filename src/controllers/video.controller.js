@@ -8,15 +8,23 @@ import { deleteOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
+  console.log(userId);
+  const pipeline = [];
+
   // for using Full Text based search u need to create a search index in mongoDB atlas
   // you can include field mapppings in search index eg.title, description, as well
   // Field mappings specify which fields within your documents should be indexed for text search.
   // this helps in seraching only in title, desc providing faster search results
   // here the name of search index is 'search-videos'
-  // console.log(req.query);
+  if (!query) {
+    throw new ApiError(404, "query is required for search");
+  }
 
-  const pipeline = [];
-  console.log(pipeline);
+  if (!isValidObjectId(userId)) {
+    throw new ApiError(404, "Enter valid userID");
+  }
+
+  // await Video.createIndexes({ title: "text", description: "text" });
 
   // if (query) {
   //   pipeline.push({
@@ -24,43 +32,33 @@ const getAllVideos = asyncHandler(async (req, res) => {
   //       index: "search-videos",
   //       text: {
   //         query: query,
-  //         path: ["title", "description"],
+  //         path: ["title", "description"], //search only on title, desc
   //       },
   //     },
   //   });
-  // } else {
-  //   throw new ApiError(404, "please enter a query");
   // }
-  // console.log(query);
-
-  if (userId) {
-    if (!isValidObjectId(userId)) {
-      throw new ApiError(404, "In valid user ID");
-    }
-
-    pipeline.push({
-      $match: {
-        owner: new mongoose.Types.ObjectId(userId),
-      },
-    });
-  }
-  console.log(userId);
-
   pipeline.push({
     $match: {
+      title: {
+        $regex: query,
+        $options: "i",
+      },
+      owner: new mongoose.Types.ObjectId(userId),
       isPublished: true,
     },
   });
-
   if (sortBy && sortType) {
     pipeline.push({
       $sort: {
-        // [sortBy]: sortType === "asc" ? 1 : -1,
-        views: -1,
+        [sortBy]: sortType === "asc" ? 1 : -1,
       },
     });
   } else {
-    pipeline.push({ $sort: { createdAt: -1 } });
+    pipeline.push({
+      $sort: {
+        createdAt: -1,
+      },
+    });
   }
 
   pipeline.push(
@@ -84,30 +82,12 @@ const getAllVideos = asyncHandler(async (req, res) => {
       $unwind: "$ownerDetails",
     }
   );
-  // console.log(pipeline);
 
   const videoAggregate = await Video.aggregate(pipeline);
   console.log(videoAggregate);
-
-  if (!videoAggregate) {
-    throw new ApiError(500, "failed to aggregate Video, try again ");
-  }
-  // console.log(videoAggregate);
-  const options = {
-    page: parseInt(page, 10),
-    limit: parseInt(limit, 10),
-  };
-
-  const video = await Video.aggregatePaginate(videoAggregate, options);
-  // console.log(video);
-
-  if (!video) {
-    throw new ApiError(500, "failed to get video");
-  }
-
   return res
     .status(200)
-    .json(new ApiResponse(200, video, "video fetched successfully"));
+    .json(new ApiResponse(200, videoAggregate, "Videos fetched successfully"));
 });
 
 const publishAVideo = asyncHandler(async (req, res) => {
@@ -284,6 +264,7 @@ const getVideoById = asyncHandler(async (req, res) => {
       },
     },
   ]);
+
   if (!video) {
     throw new ApiError(500, "failed to fetch video");
   }
