@@ -47,19 +47,6 @@ const getAllVideos = asyncHandler(async (req, res) => {
       isPublished: true,
     },
   });
-  if (sortBy && sortType) {
-    pipeline.push({
-      $sort: {
-        [sortBy]: sortType === "asc" ? 1 : -1,
-      },
-    });
-  } else {
-    pipeline.push({
-      $sort: {
-        createdAt: -1,
-      },
-    });
-  }
 
   pipeline.push(
     {
@@ -83,8 +70,34 @@ const getAllVideos = asyncHandler(async (req, res) => {
     }
   );
 
+  if (sortBy && sortType) {
+    pipeline.push({
+      $sort: {
+        [sortBy]: sortType === "asc" ? 1 : -1,
+      },
+    });
+  } else {
+    pipeline.push({
+      $sort: {
+        createdAt: -1,
+      },
+    });
+  }
+
+  const options = {
+    page: parseInt(page, 10),
+    limit: parseInt(limit, 10),
+  };
+
   const videoAggregate = await Video.aggregate(pipeline);
   console.log(videoAggregate);
+
+  if (!videoAggregate) {
+    throw new ApiError(500, "failed to get all video, please try again");
+  }
+
+  const videos = await Video.aggregatePaginate(videoAggregate, options);
+
   return res
     .status(200)
     .json(new ApiResponse(200, videoAggregate, "Videos fetched successfully"));
