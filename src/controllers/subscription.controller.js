@@ -62,6 +62,92 @@ const toggleSubscription = asyncHandler(async (req, res) => {
 });
 
 // controller to return subscriber list of a channel
+// const getUserChannelSubscribers = asyncHandler(async (req, res) => {
+//   let { channelId } = req.params;
+//   console.log(channelId);
+
+//   channelId = new mongoose.Types.ObjectId(channelId);
+
+//   if (!isValidObjectId(channelId)) {
+//     throw new ApiError(404, "enter valid channel id");
+//   }
+
+//   const subscriber = await Subscription.aggregate([
+//     {
+//       $match: {
+//         channel: channelId,
+//       },
+//     },
+
+//     {
+//       $lookup: {
+//         from: "users",
+//         foreignField: "_id",
+//         localField: "subscriber",
+//         as: "subscriber",
+//         pipeline: [
+//           {
+//             $lookup: {
+//               from: "subscriptions",
+//               foreignField: "channel",
+//               localField: "_id",
+//               as: "subscribedToSubscriber",
+//             },
+//           },
+//           {
+//             $addFields: {
+//               subscribedToSubscriber: {
+//                 $cond: {
+//                   if: {
+//                     $in: [req.user?._id, "$subscribedToSubscriber.subscriber"],
+//                   },
+//                   then: true,
+//                   else: false,
+//                 },
+//               },
+//             },
+//           },
+//           {
+//             $project: {
+//               username: 1,
+//               avatar: 1,
+//               followedToFollower: 1,
+//             },
+//           },
+//         ],
+//       },
+//     },
+//     {
+//       $addFields: {
+//         follower: {
+//           $arrayElemAt: ["$subscriber", 0],
+//         },
+//       },
+//     },
+//     {
+//       $project: {
+//         _id: 0,
+//         subscriber: 1,
+//       },
+//     },
+//   ]);
+
+//   if (!subscriber) {
+//     throw new ApiError(500, "Failed to get user subscriber");
+//   }
+
+//   const subscriberList = subscriber.map((currVal) => currVal.subscriber);
+//   return res
+//     .status(200)
+//     .json(
+//       new ApiResponse(
+//         200,
+//         { subscriberCount: subscriberList.length, subscriber },
+//         "subscribers fetched successfully"
+//       )
+//     );
+// });
+
 const getUserChannelSubscribers = asyncHandler(async (req, res) => {
   let { channelId } = req.params;
   console.log(channelId);
@@ -69,7 +155,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
   channelId = new mongoose.Types.ObjectId(channelId);
 
   if (!isValidObjectId(channelId)) {
-    throw new ApiError(404, "enter valid channel id");
+    throw new ApiError(404, "Enter a valid channel ID");
   }
 
   const subscriber = await Subscription.aggregate([
@@ -78,7 +164,6 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
         channel: channelId,
       },
     },
-
     {
       $lookup: {
         from: "users",
@@ -133,19 +218,22 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
   ]);
 
   if (!subscriber) {
-    throw new ApiError(500, "Failed to get user subscriber");
+    throw new ApiError(500, "Failed to get user subscribers");
   }
 
-  const subscriberList = subscriber.map((currVal) => currVal.subscriber);
-  return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        { subscriberCount: subscriberList.length, subscriber },
-        "subscribers fetched successfully"
-      )
-    );
+  // Transform the subscriber array to include only the 0th element of the inner array
+  const transformedSubscribers = subscriber.map((item) => item.subscriber[0]);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        subscriberCount: transformedSubscribers.length,
+        subscriber: transformedSubscribers,
+      },
+      "Subscribers fetched successfully"
+    )
+  );
 });
 
 // controller to return channel list to which user has subscribed
