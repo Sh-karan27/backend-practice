@@ -99,40 +99,53 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
               subscribedToSubscriber: {
                 $cond: {
                   if: {
-                    $in: [channelId, "$subscribedToSubscriber.subscriber"],
+                    $in: [req.user?._id, "$subscribedToSubscriber.subscriber"],
                   },
                   then: true,
                   else: false,
                 },
               },
-              subscribersCount: {
-                $size: "$subscribedToSubscriber",
-              },
+            },
+          },
+          {
+            $project: {
+              username: 1,
+              avatar: 1,
+              followedToFollower: 1,
             },
           },
         ],
       },
     },
     {
-      $unwind: "$subscriber",
+      $addFields: {
+        follower: {
+          $arrayElemAt: ["$subscriber", 0],
+        },
+      },
     },
     {
       $project: {
         _id: 0,
-        subscriber: {
-          username: 1,
-          fullName: 1,
-          avatar: 1,
-          subscribedToSubscriber: 1,
-          subscribersCount: 1,
-        },
+        subscriber: 1,
       },
     },
   ]);
 
+  if (!subscriber) {
+    throw new ApiError(500, "Failed to get user subscriber");
+  }
+
+  const subscriberList = subscriber.map((currVal) => currVal.subscriber);
   return res
     .status(200)
-    .json(new ApiResponse(200, subscriber, "subscribers fetched successfully"));
+    .json(
+      new ApiResponse(
+        200,
+        { subscriberCount: subscriberList.length, subscriber },
+        "subscribers fetched successfully"
+      )
+    );
 });
 
 // controller to return channel list to which user has subscribed
@@ -163,56 +176,60 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
         pipeline: [
           {
             $lookup: {
-              from: "videos",
+              from: "subscriptions",
               localField: "_id",
-              foreignField: "owner",
-              as: "videos",
+              foreignField: "subscriber",
+              as: "subscriberingUs",
             },
           },
           {
             $addFields: {
-              latestVideo: {
-                $last: "$videos",
+              followingUs: {
+                $cond: {
+                  if: {
+                    $in: [req.user?._id, "$subscriberingUs.subscribedChannel"],
+                  },
+                  then: true,
+                  else: false,
+                },
               },
-              videos: "$videos",
+            },
+          },
+          {
+            $project: {
+              username: 1,
+              avatar: 1,
+              subscriberingUs: 1,
             },
           },
         ],
       },
     },
     {
-      $unwind: "$subscribedChannel",
+      $addFields: {
+        subscribedChannel: { $arrayElemAt: ["$subscribedChannel", 0] },
+      },
     },
     {
       $project: {
         _id: 0,
-        subscribedChannel: {
-          _id: 1,
-          username: 1,
-          fullName: 1,
-          avatar: 1,
-          latestVideo: {
-            _id: 1,
-            "videoFile.url": 1,
-            "thumbnail.url": 1,
-            owner: 1,
-            title: 1,
-            description: 1,
-            duration: 1,
-            createdAt: 1,
-            views: 1,
-          },
-        },
+        subscribedChannel: 1,
       },
     },
   ]);
+  if (!subscribedChannels) {
+    throw new ApiError(500, "Failed to get UserProfile subscribed channel");
+  }
 
+  const channelSubscribedTo = subscribedChannels.map(
+    (currVal) => currVal.subscribedChannels
+  );
   return res
     .status(200)
     .json(
       new ApiResponse(
         200,
-        subscribedChannels,
+        { subscribedToCount: subscribedChannels, channelSubscribedTo },
         "subscribed channels fetched successfully"
       )
     );
