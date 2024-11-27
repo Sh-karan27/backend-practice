@@ -63,7 +63,6 @@ const toggleSubscription = asyncHandler(async (req, res) => {
 
 // controller to return subscriber list of a channel
 
-
 const getUserChannelSubscribers = asyncHandler(async (req, res) => {
   let { channelId } = req.params;
   console.log(channelId);
@@ -113,6 +112,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
               username: 1,
               avatar: 1,
               followedToFollower: 1,
+              subscribedToSubscriber: 1,
             },
           },
         ],
@@ -186,7 +186,7 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
           },
           {
             $addFields: {
-              followingUs: {
+              followingYou: {
                 $cond: {
                   if: {
                     $in: [req.user?._id, "$subscriberingUs.channel"],
@@ -201,7 +201,7 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
             $project: {
               username: 1,
               avatar: 1,
-              followingUs: 1,
+              followingYou: 1,
             },
           },
         ],
