@@ -435,11 +435,41 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, video, "Video published successfully"));
 });
 
+const getUserVideos = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  if (!isValidObjectId(userId)) {
+    throw new ApiError(401, "Invalid userId");
+  }
+
+  const userVideos = await Video.aggregate([
+    {
+      $match: {
+        owner: new mongoose.Types.ObjectId(userId),
+      },
+    },
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+  ]);
+
+  if (!userVideos) {
+    throw new ApiError(500, "Failed to fetch user videos");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, userVideos, "User videos fetched successfully"));
+});
+
 export {
   getAllVideos,
   publishAVideo,
   getVideoById,
   updateVideoDetails,
   deleteVideo,
+  getUserVideos,
   togglePublishStatus,
 };
